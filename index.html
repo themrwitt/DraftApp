@@ -327,6 +327,8 @@ let poolLoaded=false;
 const KEY="draftboard_v1";
 let S={slot:4,pickIdx:0,tePrem:true,gone:[],mine:[],hist:[],draftId:'1396393203128610816',leagueId:'1389450175080071168',user:'TheMrWitt'};
 let LIVE={n:0,teams:{},loaded:false};
+let syncStatus='Off. Tap SYNC up top to auto-track every pick.';
+let detStatus='Finds your draft slot and draft ID automatically.';
 try{const j=localStorage.getItem(KEY);if(j)S=Object.assign(S,JSON.parse(j))}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 
@@ -447,6 +449,7 @@ function render(){
   document.getElementById("fmt").textContent=
     `12-TEAM · 3WR+2FLEX${S.tePrem?" · TE PREM":""} · SLOT ${S.slot}`;
   document.getElementById("tetog").classList.toggle("on",S.tePrem);
+  document.getElementById("syncbtn").classList.toggle("on",!!syncTimer);
   document.getElementById("slots").innerHTML=Array.from({length:12},(_,i)=>
     `<button class="slot${i+1===S.slot?" on":""}" data-s="${i+1}">${i+1}</button>`).join("");
   document.getElementById("rail").innerHTML=picks.map((n,i)=>
@@ -513,7 +516,7 @@ function render(){
         <span style="color:${c};font-weight:700">${d>0?"+"+d:d}</span></div>`}).join("")}</div>
       <div class="note">Negative = you reached. Past <b>−8</b> is red. Screenshot this after the draft.</div>`
       :`<div class="empty">Nothing yet. Hit <b>+</b> on a player.</div>`}
-      <div class="grp"><div class="gl">Sleeper sync</div><div class="note" id="syncmsg">Off. Tap SYNC up top to auto-track every pick.</div><input id="uname" value="${S.user}" placeholder="Sleeper username" style="width:100%;background:var(--ink2);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:13px;margin-bottom:6px"><button class="btn" id="detect" style="padding:8px 12px">Detect my slot</button><div class="note" id="detmsg">Finds your draft slot and draft ID automatically.</div></div><div class="grp"><div class="gl">Full player pool</div><button class="btn" id="loadpool" style="padding:8px 12px">${poolLoaded?"Reload pool":"Load full player list"}</button><div class="note" id="poolmsg">${poolLoaded?`${P.length} players loaded.`:"Adds every rostered NFL player so late rounds never run dry, and makes pick matching exact by player ID. ~5MB, once. Do this before the draft starts."}</div></div><div class="grp"><button class="btn" id="wipe" style="padding:8px 12px">Reset everything</button></div>`;
+      <div class="grp"><div class="gl">Sleeper sync</div><div class="note" id="syncmsg">${syncStatus}</div><input id="uname" value="${S.user}" placeholder="Sleeper username" style="width:100%;background:var(--ink2);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:13px;margin-bottom:6px"><button class="btn" id="detect" style="padding:8px 12px">Detect my slot</button><div class="note" id="detmsg">${detStatus}</div></div><div class="grp"><div class="gl">Full player pool</div><button class="btn" id="loadpool" style="padding:8px 12px">${poolLoaded?"Reload pool":"Load full player list"}</button><div class="note" id="poolmsg">${poolLoaded?`${P.length} players loaded.`:"Adds every rostered NFL player so late rounds never run dry, and makes pick matching exact by player ID. ~5MB, once. Do this before the draft starts."}</div></div><div class="grp"><button class="btn" id="wipe" style="padding:8px 12px">Reset everything</button></div>`;
   }
 
   document.getElementById("rline").innerHTML=
@@ -530,7 +533,7 @@ document.getElementById("q").addEventListener("input",e=>{query=e.target.value.t
 
 /* ---------- Sleeper live sync ---------- */
 let syncTimer=null;
-function smsg(t){const e=document.getElementById("syncmsg");if(e)e.innerHTML=t;
+function smsg(t){syncStatus=t;const e=document.getElementById("syncmsg");if(e)e.innerHTML=t;
   const b=document.getElementById("syncbtn");if(b)b.classList.toggle("on",!!syncTimer)}
 function matchPlayer(md,pid){
   if(pid&&byId[pid])return byId[pid];
@@ -564,6 +567,8 @@ async function pollSync(){
       +(cors?"Browser blocked the request. Manual tapping still works — that's the fallback."
             :"Check the draft ID.")); 
     clearInterval(syncTimer);syncTimer=null;
+    const b=document.getElementById("syncbtn");if(b)b.classList.remove("on");
+    render();
   }
 }
 
@@ -606,7 +611,7 @@ async function loadPool(){
 }
 
 async function detectSlot(){
-  const st=t=>{const e=document.getElementById("detmsg");if(e)e.innerHTML=t};
+  const st=t=>{detStatus=t;const e=document.getElementById("detmsg");if(e)e.innerHTML=t};
   const un=(document.getElementById("uname")?.value||S.user).trim();
   if(!un){st("Enter your Sleeper username.");return}
   try{
@@ -625,8 +630,10 @@ async function detectSlot(){
 }
 
 function toggleSync(){
-  if(syncTimer){clearInterval(syncTimer);syncTimer=null;smsg("Sync off.");return}
-  smsg("Connecting…");pollSync();syncTimer=setInterval(pollSync,10000);
+  if(syncTimer){clearInterval(syncTimer);syncTimer=null;
+    smsg("Off. Tap SYNC to resume.");render();return}
+  syncTimer=setInterval(pollSync,10000);
+  smsg("Connecting…");pollSync();
 }
 
 document.addEventListener("click",e=>{
