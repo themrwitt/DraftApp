@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Draft Board</title>
+<style>
+:root{--ink:#0B1420;--ink2:#121E2E;--ink3:#182739;--line:#24374E;
+--chalk:#E9EEF4;--dim:#7F94AC;--odds:#F2B441;--safe:#3AD6A0;--cliff:#FF4D6D;
+--you:#4CC2FF;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+--sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--ink);color:var(--chalk);font-family:var(--sans);
+font-size:15px;line-height:1.45;padding-bottom:82px}
+h1,h2{margin:0;font-weight:800;letter-spacing:-.02em}
+.top{position:sticky;top:0;z-index:20;background:rgba(11,20,32,.98);
+backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{padding:8px 12px 4px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kick{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+h1{font-size:17px;text-transform:uppercase}
+.tp{border:1px solid var(--line);background:var(--ink2);color:var(--dim);border-radius:6px;
+padding:5px 8px;font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:.06em;white-space:nowrap}
+.tp.on{border-color:var(--odds);color:var(--odds);background:#241C0B}
+.srch{padding:6px 12px 8px}
+.srch input{width:100%;background:var(--ink2);border:1px solid var(--line);color:var(--chalk);
+border-radius:9px;padding:10px 12px;font-size:15px;font-family:var(--sans)}
+.srch input:focus{outline:none;border-color:var(--you)}
+.slots,.rail{display:flex;gap:5px;overflow-x:auto;padding:0 12px 8px;scrollbar-width:none}
+.slots::-webkit-scrollbar,.rail::-webkit-scrollbar,.rline::-webkit-scrollbar{display:none}
+.slot{flex:0 0 auto;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
+background:var(--ink2);color:var(--dim);font-family:var(--mono);font-size:13px;font-weight:700;cursor:pointer}
+.slot.on{background:var(--you);border-color:var(--you);color:#04121C}
+.pk{flex:0 0 auto;padding:4px 9px;border-radius:7px;border:1px solid var(--line);
+background:var(--ink2);cursor:pointer;text-align:center;min-width:50px}
+.pk.on{border-color:var(--odds);background:#241C0B}
+.pk.done{opacity:.4}
+.pk .r{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.08em}
+.pk .n{font-family:var(--mono);font-size:14px;font-weight:700}
+.pk.on .n{color:var(--odds)}
+.fbar{display:flex;gap:5px;padding:7px 12px;overflow-x:auto;scrollbar-width:none;
+border-top:1px solid var(--line)}
+.fbar::-webkit-scrollbar{display:none}
+.fc{flex:0 0 auto;padding:4px 11px;border-radius:20px;border:1px solid var(--line);
+background:var(--ink2);color:var(--dim);font-family:var(--mono);font-size:10px;
+letter-spacing:.08em;cursor:pointer}
+.fc.on{background:var(--you);border-color:var(--you);color:#04121C;font-weight:700}
+.tabs{display:flex;border-top:1px solid var(--line)}
+.tab{flex:1;padding:9px;background:none;border:0;color:var(--dim);font-family:var(--mono);
+font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent}
+.tab.on{color:var(--chalk);border-bottom-color:var(--you)}
+main{padding:12px}
+.hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
+.hd h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em}
+.hd .sub{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.alert{padding:8px 11px;border-radius:8px;margin-bottom:7px;font-size:12.5px;display:flex;gap:8px}
+.alert.red{background:#25101A;border:1px solid #5A1F2E;color:#FFB3C2}
+.alert.amb{background:#241C0B;border:1px solid #5A4415;color:#F5D08A}
+.alert b{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;display:block}
+.verd{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:12px}
+.v{background:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:7px 4px;text-align:center}
+.v .p{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.08em}
+.v .w{font-family:var(--mono);font-size:12px;font-weight:700;margin-top:2px}
+.v .g{font-family:var(--mono);font-size:8px;color:var(--dim)}
+.grp{margin-bottom:16px}
+.gl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+color:var(--dim);margin-bottom:6px;display:flex;align-items:center;gap:7px}
+.gl::after{content:"";flex:1;height:1px;background:var(--line)}
+.gl.hot{color:var(--cliff)}
+.row{display:flex;align-items:center;gap:8px;padding:7px 9px;margin-bottom:3px;
+background:var(--ink2);border:1px solid var(--line);border-radius:8px}
+.row.gone{opacity:.28}.row.gone .nm{text-decoration:line-through}
+.row.mine{border-color:var(--you);background:#0D2130}
+.tz{flex:1;display:flex;align-items:center;gap:8px;cursor:pointer;min-width:0}
+.pos{flex:0 0 27px;font-family:var(--mono);font-size:8px;font-weight:700;text-align:center;
+padding:3px 0;border-radius:4px}
+.pos.RB{background:#2A1830;color:#E29BFF}.pos.WR{background:#0E2A2E;color:#5BE0D4}
+.pos.TE{background:#2E2410;color:#F2B441}.pos.QB{background:#132539;color:#6FB2F0}
+.pos.DEF,.pos.PK{background:#232323;color:#B0B0B0}
+.nm{flex:1;font-weight:600;font-size:13.5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm .mt{font-family:var(--mono);font-size:9px;color:var(--dim);font-weight:400;margin-left:5px}
+.odd{flex:0 0 40px;text-align:right;font-family:var(--mono);font-size:14px;font-weight:700}
+.odd small{font-size:8px;font-weight:400;opacity:.6}
+.add{flex:0 0 28px;height:28px;border-radius:6px;border:1px solid var(--line);
+background:var(--ink3);color:var(--you);font-size:15px;font-weight:700;cursor:pointer;line-height:1}
+.cb{margin:10px 0 7px;padding:5px 10px;border-radius:6px;
+background:repeating-linear-gradient(135deg,#2A0F18 0 8px,#1C0A11 8px 16px);
+border:1px solid #5A1F2E;font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+text-transform:uppercase;color:var(--cliff)}
+.note{background:var(--ink2);border-left:3px solid var(--odds);border-radius:0 8px 8px 0;
+padding:9px 11px;margin-bottom:12px;font-size:12.5px;color:var(--dim)}
+.note b{color:var(--odds)}
+.empty{color:var(--dim);font-size:12.5px;padding:18px 0;text-align:center}
+.log{font-family:var(--mono);font-size:11.5px;padding:6px 9px;background:var(--ink2);
+border:1px solid var(--line);border-radius:6px;margin-bottom:3px;display:flex;
+justify-content:space-between;gap:8px}
+.rost{position:fixed;bottom:0;left:0;right:0;background:var(--ink3);
+border-top:1px solid var(--line);z-index:20}
+.rline{display:flex;gap:7px;padding:7px 12px;overflow-x:auto;scrollbar-width:none;
+font-family:var(--mono);font-size:9px;color:var(--dim);align-items:center}
+.chip{flex:0 0 auto;padding:3px 7px;border-radius:5px;background:var(--ink2);border:1px solid var(--line)}
+.chip.ok{color:var(--safe);border-color:#1E4A3C}
+.chip.need{color:var(--cliff);border-color:#5A1F2E}
+.btn{background:none;border:1px solid var(--line);color:var(--dim);border-radius:6px;
+padding:4px 8px;font-family:var(--mono);font-size:9px;cursor:pointer;flex:0 0 auto}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="bar">
+    <div><div class="kick" id="fmt"></div><h1>Draft Board</h1></div>
+    <div style="display:flex;gap:5px">
+      <button class="tp" id="tetog">TE PREM</button>
+      <button class="tp" id="syncbtn">SYNC</button>
+      <button class="tp" id="undo">UNDO</button>
+    </div>
+  </div>
+  <div class="srch"><input id="q" placeholder="Search — tap a result to cross off" autocomplete="off"></div>
+  <div class="slots" id="slots"></div>
+  <div class="rail" id="rail"></div>
+  <div class="fbar" id="fbar"></div>
+  <div class="tabs">
+    <button class="tab on" data-v="plan">On the clock</button>
+    <button class="tab" data-v="board">Board</button>
+    <button class="tab" data-v="team">My team</button>
+  </div>
+</div>
+
+<main id="main"></main>
+<div class="rost"><div class="rline" id="rline"></div></div>
+
+<script>
+/* ADP: FantasyFootballCalculator 12-team PPR, 8,162 mocks, Aug 22-29 2026 */
+const RAW=`Jahmyr Gibbs|RB|DET|6|1.5|0.7
+Bijan Robinson|RB|ATL|11|2.3|0.6
+Puka Nacua|WR|LAR|11|3.0|0.8
+Ja'Marr Chase|WR|CIN|6|3.9|1.0
+Jaxon Smith-Njigba|WR|SEA|11|5.5|1.2
+Amon-Ra St. Brown|WR|DET|6|6.5|1.3
+Christian McCaffrey|RB|SF|8|6.6|1.7
+Jonathan Taylor|RB|IND|13|7.5|1.7
+De'Von Achane|RB|MIA|6|10.4|1.9
+CeeDee Lamb|WR|DAL|14|10.6|1.9
+Drake London|WR|ATL|11|11.0|2.2
+Justin Jefferson|WR|MIN|6|11.8|2.2
+James Cook III|RB|BUF|7|12.6|2.9
+Chase Brown|RB|CIN|6|13.1|2.6
+Rashee Rice|WR|KC|5|15.3|2.4
+Derrick Henry|RB|BAL|13|16.9|2.6
+A.J. Brown|WR|NE|11|17.6|3.0
+Chris Olave|WR|NO|8|19.0|3.0
+Ashton Jeanty|RB|LV|13|19.0|5.5
+Saquon Barkley|RB|PHI|10|19.1|3.3
+George Pickens|WR|DAL|14|20.8|3.1
+Nico Collins|WR|HOU|8|20.9|2.9
+Kenneth Walker|RB|KC|5|21.2|3.9
+Omarion Hampton|RB|LAC|7|22.8|4.2
+Garrett Wilson|WR|NYJ|13|26.2|3.2
+Zay Flowers|WR|BAL|13|26.5|3.4
+Malik Nabers|WR|NYG|8|27.0|3.4
+Jeremiyah Love|RB|ARI|14|27.1|3.7
+Trey McBride|TE|ARI|14|29.1|4.6
+DeVonta Smith|WR|PHI|10|29.8|3.5
+Tetairoa McMillan|WR|CAR|5|30.9|3.5
+Josh Jacobs|RB|GB|11|31.2|3.5
+Kyren Williams|RB|LAR|11|31.7|4.1
+Breece Hall|RB|NYJ|13|33.7|4.0
+Josh Allen|QB|BUF|7|34.1|9.3
+Emeka Egbuka|WR|TB|10|34.8|3.9
+Brock Bowers|TE|LV|13|35.2|7.1
+Travis Etienne Jr.|RB|NO|8|37.0|4.8
+Javonte Williams|RB|DAL|14|37.1|4.7
+Tee Higgins|WR|CIN|6|37.1|4.8
+Ladd McConkey|WR|LAC|7|38.0|4.5
+Cam Skattebo|RB|NYG|8|38.9|5.0
+Davante Adams|WR|LAR|11|42.4|4.5
+Jameson Williams|WR|DET|6|44.9|4.6
+Bucky Irving|RB|TB|10|45.1|4.9
+D'Andre Swift|RB|CHI|10|45.3|4.4
+Jaylen Waddle|WR|DEN|10|45.5|5.3
+Terry McLaurin|WR|WAS|7|47.7|4.9
+DJ Moore|WR|BUF|7|48.2|6.2
+Quinshon Judkins|RB|CLE|11|50.5|5.3
+Drake Maye|QB|NE|11|51.5|8.1
+Bhayshul Tuten|RB|JAX|7|52.4|5.2
+Rome Odunze|WR|CHI|10|53.8|5.7
+Mike Evans|WR|SF|8|55.2|6.1
+Luther Burden III|WR|CHI|10|55.6|6.5
+Colston Loveland|TE|CHI|10|56.5|9.3
+Lamar Jackson|QB|BAL|13|56.7|7.5
+Joe Burrow|QB|CIN|6|57.6|8.0
+David Montgomery|RB|HOU|8|57.8|6.2
+Christian Watson|WR|GB|11|59.1|6.6
+Courtland Sutton|WR|DEN|10|60.6|6.6
+Jaylen Warren|RB|PIT|9|60.8|6.4
+Rhamondre Stevenson|RB|NE|11|62.6|6.8
+TreVeyon Henderson|RB|NE|11|64.1|6.3
+Parker Washington|WR|JAX|7|64.1|7.6
+Marvin Harrison Jr.|WR|ARI|14|64.6|7.4
+DK Metcalf|WR|PIT|9|65.1|7.2
+Tyler Warren|TE|IND|13|65.4|8.9
+Dak Prescott|QB|DAL|14|65.8|8.7
+Tony Pollard|RB|TEN|9|69.5|6.3
+Alec Pierce|WR|IND|13|69.8|6.9
+Jayden Daniels|QB|WAS|7|71.4|10.6
+Brian Thomas Jr.|WR|JAX|7|73.0|7.4
+Jadarian Price|RB|SEA|11|73.9|10.2
+Rico Dowdle|RB|PIT|9|74.9|7.4
+Michael Pittman Jr.|WR|PIT|9|75.4|7.5
+Michael Wilson|WR|ARI|14|75.6|7.9
+Kyle Pitts Sr.|TE|ATL|11|76.0|9.9
+Matthew Stafford|QB|LAR|11|76.4|10.6
+Harold Fannin Jr.|TE|CLE|11|77.7|8.6
+Jalen Hurts|QB|PHI|10|77.8|10.8
+Chris Godwin Jr.|WR|TB|10|79.6|8.0
+Carnell Tate|WR|TEN|9|79.8|8.7
+Chuba Hubbard|RB|CAR|5|81.4|9.8
+Seattle Defense|DEF|SEA|11|82.1|8.3
+Jakobi Meyers|WR|JAX|7|86.2|7.6
+Wan'Dale Robinson|WR|TEN|9|86.4|8.5
+J.K. Dobbins|RB|DEN|10|86.9|10.5
+Brock Purdy|QB|SF|8|86.9|11.5
+Denver Defense|DEF|DEN|10|87.3|7.5
+Josh Downs|WR|IND|13|88.9|8.3
+Caleb Williams|QB|CHI|10|90.5|12.2
+Trevor Lawrence|QB|JAX|7|91.2|12.2
+Kenny Gainwell|RB|TB|10|91.2|10.7
+Stefon Diggs|WR|WAS|7|91.6|9.1
+Jonathon Brooks|RB|CAR|5|92.5|12.2
+RJ Harvey|RB|DEN|10|93.4|11.9
+Jayden Reed|WR|GB|11|95.0|8.1
+Jordan Addison|WR|MIN|6|97.1|8.1
+Quentin Johnston|WR|LAC|7|97.6|8.8
+Houston Defense|DEF|HOU|8|98.1|9.6
+Tucker Kraft|TE|GB|11|100.4|19.1
+Jared Goff|QB|DET|6|100.5|13.0
+Dallas Goedert|TE|PHI|10|102.0|20.2
+Patrick Mahomes|QB|KC|5|102.3|13.0
+Travis Kelce|TE|KC|5|103.3|20.9
+Khalil Shakir|WR|BUF|7|104.2|7.5
+Aaron Jones Sr.|RB|MIN|6|104.6|11.7
+Justin Herbert|QB|LAC|7|105.0|13.9
+George Kittle|TE|SF|8|105.4|21.1
+Xavier Worthy|WR|KC|5|105.6|8.9
+Deebo Samuel Sr.|WR|SF|8|106.0|9.2
+Matthew Golden|WR|GB|11|107.8|9.2
+LA Rams Defense|DEF|LAR|11|109.1|12.0
+Kyle Monangai|RB|CHI|10|110.2|12.6
+Minnesota Defense|DEF|MIN|6|111.2|9.8
+Bo Nix|QB|DEN|10|111.7|13.0
+Romeo Doubs|WR|NE|11|113.0|9.7
+Jacory Croskey-Merritt|RB|WAS|7|114.5|13.6
+Rachaad White|RB|WAS|7|114.7|13.6
+Jordan Mason|RB|MIN|6|115.9|15.9
+Jaxson Dart|QB|NYG|8|117.6|11.6
+Sam LaPorta|TE|DET|6|117.9|19.7
+Makai Lemon|WR|PHI|10|118.7|12.2
+KC Concepcion|WR|CLE|11|121.4|10.3
+Jalen Coker|WR|CAR|5|122.3|10.0
+Blake Corum|RB|LAR|11|122.5|15.9
+Detroit Defense|DEF|DET|6|127.2|14.4
+Jerry Jeudy|WR|CLE|11|127.2|11.1
+Brandon Aubrey|PK|DAL|14|127.5|22.3
+Mark Andrews|TE|BAL|13|128.3|17.2
+Rashid Shaheed|WR|SEA|11|128.8|11.3
+Tyjae Spears|RB|TEN|9|129.6|12.8
+Baker Mayfield|QB|TB|10|130.4|10.4
+De'Zhaun Stribling|WR|SF|8|131.1|16.5
+Tre Tucker|WR|LV|13|132.2|8.9
+Zach Charbonnet|RB|SEA|11|132.3|17.0
+Jake Ferguson|TE|DAL|14|132.8|16.7
+Keenan Allen|WR|IND|13|132.9|12.6
+Kyler Murray|QB|MIN|6|134.4|10.7
+Jalen McMillan|WR|TB|10|134.5|12.2
+Tyler Shough|QB|NO|8|135.6|9.1
+Ka'imi Fairbairn|PK|HOU|8|136.1|20.5
+Jason Myers|PK|SEA|11|136.4|17.5
+Isaiah Likely|TE|NYG|8|136.4|17.6
+Denzel Boston|WR|CLE|11|138.2|10.7
+Woody Marks|RB|HOU|8|139.5|15.8
+Cameron Dicker|PK|LAC|7|140.8|20.5
+Calvin Ridley|WR|TEN|9|144.4|11.2
+Mike Washington Jr.|RB|LV|13|145.9|25.5
+Jordan Love|QB|GB|11|145.9|13.2
+Jauan Jennings|WR|MIN|6|147.8|13.1
+Malik Washington|WR|MIA|6|147.8|13.8
+Dalton Kincaid|TE|BUF|7|148.3|21.2
+Juwan Johnson|TE|NO|8|149.5|16.9
+MarShawn Lloyd|RB|GB|11|150.4|22.7
+Alvin Kamara|RB|NO|8|151.3|16.1
+Keon Coleman|WR|BUF|7|152.0|42.1
+Isiah Pacheco|RB|DET|6|152.3|19.5
+Cooper Kupp|WR|SEA|11|152.9|17.9
+David Njoku|TE|LAC|7|153.0|21.1
+Rashod Bateman|WR|BAL|13|153.4|13.3
+Tyler Allgeier|RB|ARI|14|155.7|20.4
+Tyrone Tracy Jr.|RB|NYG|8|156.3|17.0
+Hunter Henry|TE|NE|11|156.5|22.9
+Ja'Kobi Lane|WR|BAL|13|156.8|20.0
+Braelon Allen|RB|NYJ|13|156.8|24.1
+C.J. Stroud|QB|HOU|8|157.4|12.5
+Jordyn Tyson|WR|NO|8|157.4|14.5
+Chris Boswell|PK|PIT|9|157.9|22.4
+Tank Dell|WR|HOU|8|158.4|14.1
+Dalton Schultz|TE|HOU|8|161.0|21.2
+T.J. Hockenson|TE|MIN|6|163.7|24.8
+Travis Hunter|WR|JAX|7|163.8|14.6`;
+
+const FLAG={"Christian McCaffrey":"calf · age 30 · 450 touches last yr — fade at ADP",
+"Puka Nacua":"groin, minor per McVay","Breece Hall":"groin, out 2-3wks — pair w/ Braelon Allen",
+"Jeremiyah Love":"high ankle sprain — fade","Josh Jacobs":"groin + suspension risk",
+"Emeka Egbuka":"toe, Week 1 in doubt","Luther Burden III":"groin, missed preseason",
+"Malik Nabers":"knee, back in team drills — buy the discount",
+"George Kittle":"Achilles, ahead of schedule — the late-round pick",
+"Tucker Kraft":"ACL, snaps capped ~half season","Chuba Hubbard":"hamstring, week-to-week",
+"Tyler Warren":"groin ~1wk, non-event","Sam LaPorta":"hip","Alec Pierce":"ankle, PUP"};
+
+const P=RAW.trim().split("\n").map(l=>{const[n,p,t,b,a,s]=l.split("|");
+  return{n,p,t,b:+b,a:+a,s:+s}});
+const byName=Object.fromEntries(P.map(x=>[x.n,x]));
+const TEAMBYE={};P.forEach(x=>{if(x.t&&x.b)TEAMBYE[x.t]=x.b});
+let byId={};              /* sleeper player_id -> our player object */
+let poolLoaded=false;
+
+/* ---------- state (persisted) ---------- */
+const KEY="draftboard_v1";
+let S={slot:4,pickIdx:0,tePrem:true,gone:[],mine:[],hist:[],draftId:'1396393203128610816',leagueId:'1389450175080071168',user:'TheMrWitt'};
+let LIVE={n:0,teams:{},loaded:false};
+try{const j=localStorage.getItem(KEY);if(j)S=Object.assign(S,JSON.parse(j))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+
+let view="plan",query="",filt="ALL";
+
+/* TE premium shifts tight ends earlier */
+const adp=x=>S.tePrem&&x.p==="TE"?Math.max(1,x.a-10):x.a;
+const isGone=n=>S.gone.includes(n)||S.mine.includes(n);
+const FILTS=[['ALL','ALL'],['RB','RB'],['WR','WR'],['TE','TE'],['QB','QB'],['DEF','D/ST'],['PK','K']];
+const inFilt=x=>filt==='ALL'||x.p===filt;
+
+function erf(x){const g=x<0?-1:1;x=Math.abs(x);
+const a=[.254829592,-.284496736,1.421413741,-1.453152027,1.061405429],p=.3275911,t=1/(1+p*x);
+return g*(1-((((a[4]*t+a[3])*t+a[2])*t+a[1])*t+a[0])*t*Math.exp(-x*x))}
+const avail=(k,x)=>1-.5*(1+erf((k-adp(x))/(x.s*Math.SQRT2)));
+const myPicks=()=>Array.from({length:16},(_,i)=>i%2===0?i*12+S.slot:i*12+(13-S.slot));
+const oc=p=>p>.75?"var(--safe)":p>.45?"var(--odds)":"var(--cliff)";
+
+/* auto-tier: new tier when the ADP gap within a position exceeds threshold */
+function tiers(pos){
+  const g=P.filter(x=>x.p===pos&&!x.u).sort((a,b)=>adp(a)-adp(b));
+  const out=[];let cur=[];
+  g.forEach((x,i)=>{cur.push(x);const nx=g[i+1];
+    if(!nx){out.push(cur);return}
+    if(adp(nx)-adp(x)>Math.max(3,adp(x)*.055)){out.push(cur);cur=[]}});
+  return out;
+}
+
+
+/* which draft slot owns overall pick n (12-team snake) */
+function slotOf(n){const r=Math.ceil(n/12),i=((n-1)%12)+1;return r%2?i:13-i}
+
+/* rebuild every team's roster from the picks feed */
+function buildTeams(picks){
+  const t={};for(let i=1;i<=12;i++)t[i]={QB:0,RB:0,WR:0,TE:0};
+  picks.forEach(pk=>{const pos=(pk.metadata||{}).position;
+    if(t[pk.draft_slot]&&t[pk.draft_slot][pos]!==undefined)t[pk.draft_slot][pos]++});
+  return t;
+}
+/* how many teams picking before my next turn still need each position */
+function demand(fromPick,toPick){
+  const need={QB:0,RB:0,WR:0,TE:0},REQ={QB:1,RB:2,WR:3,TE:1};
+  if(!LIVE.loaded)return null;
+  const seen=new Set();
+  for(let n=fromPick;n<toPick;n++){
+    const sl=slotOf(n);if(sl===S.slot||seen.has(sl))continue;seen.add(sl);
+    const r=LIVE.teams[sl]||{QB:0,RB:0,WR:0,TE:0};
+    Object.keys(REQ).forEach(k=>{if(r[k]<REQ[k])need[k]++});
+  }
+  return{need,teams:seen.size};
+}
+
+function verdict(pos,pk,next){
+  const pool=P.filter(x=>x.p===pos&&!isGone(x.n)&&!x.u).sort((a,b)=>adp(a)-adp(b));
+  const now=pool.find(x=>avail(pk,x)>.30);
+  if(!now)return{w:"—",g:"",c:"var(--dim)"};
+  if(next===null)return{w:"LAST",g:"",c:"var(--odds)"};
+  const eba=pool.find(x=>avail(next,x)>=.5);
+  if(!eba)return{w:"TAKE",g:"cliff",c:"var(--cliff)"};
+  const gap=Math.round(adp(eba)-adp(now));
+  if(gap<=6)return{w:"WAIT",g:`−${gap}`,c:"var(--safe)"};
+  if(gap<=15)return{w:"OK",g:`−${gap}`,c:"var(--odds)"};
+  return{w:"TAKE",g:`−${gap}`,c:"var(--cliff)"};
+}
+
+function runAlert(){
+  const last=S.gone.slice(-8).map(n=>byName[n]).filter(Boolean);
+  if(last.length<6)return"";
+  const c={};last.forEach(x=>c[x.p]=(c[x.p]||0)+1);
+  const h=Object.entries(c).find(([k,v])=>v>=4&&["RB","WR","TE","QB"].includes(k));
+  if(!h)return"";
+  return`<div class="alert red"><span>🏃</span><div><b>${h[0]} run</b>
+   ${h[1]} of the last ${last.length} picks. That tier empties before it's back to you.</div></div>`;
+}
+
+function roster(){
+  const R=S.mine.map(n=>byName[n]).filter(Boolean);
+  const c=p=>R.filter(x=>x.p===p).length;
+  const qb=c("QB"),rb=c("RB"),wr=c("WR"),te=c("TE");
+  const flex=Math.max(0,rb-2)+Math.max(0,wr-3)+Math.max(0,te-1);
+  const need=[];
+  if(qb<1)need.push("QB");if(rb<2)need.push(`RB×${2-rb}`);
+  if(wr<3)need.push(`WR×${3-wr}`);if(te<1)need.push("TE");
+  if(flex<2)need.push(`FLEX×${2-flex}`);
+  const al=[];
+  const risky=R.filter(x=>FLAG[x.n]);
+  if(risky.length>=3)al.push(["red","🩹","Injury exposure",
+    `${risky.length} flagged: ${risky.map(x=>x.n.split(" ").slice(-1)[0]).join(", ")}. This is how last year happened.`]);
+  const by={};R.forEach(x=>{if(x.p!=="QB"&&x.p!=="PK"&&x.p!=="DEF")by[x.b]=(by[x.b]||0)+1});
+  const bad=Object.entries(by).find(([,v])=>v>=4);
+  if(bad)al.push(["amb","📅","Bye collision",
+    `${bad[1]} skill players on Week ${bad[0]}. You start 3WR+TE+2FLEX — that's a loss.`]);
+  const tm={};R.forEach(x=>tm[x.t]=(tm[x.t]||0)+1);
+  const st=Object.entries(tm).find(([,v])=>v>=3);
+  if(st)al.push(["amb","🔗","One offense",`${st[1]} from ${st[0]}. One bad season sinks three slots.`]);
+  if(S.pickIdx+1>=6&&wr<3)al.push(["red","⚠️","Pass-catcher shortfall",
+    `Round ${S.pickIdx+1} with ${wr} WR and you must start 3. Fix it now.`]);
+  return{qb,rb,wr,te,flex,need,al};
+}
+
+function rowHTML(x,pk){
+  const cls=S.mine.includes(x.n)?"mine":S.gone.includes(x.n)?"gone":"";
+  const f=FLAG[x.n];
+  let odd;
+  if(pk!==null){const a=avail(pk,x);
+    odd=`<div class="odd" style="color:${oc(a)}">${Math.round(a*100)}<small>%</small></div>`}
+  else odd=x.u?`<div class="odd" style="color:var(--dim);font-size:9px">${x.dc?"DC"+x.dc:"—"}</div>`
+    :`<div class="odd" style="color:var(--dim);font-size:11px">${adp(x).toFixed(0)}</div>`;
+  const inj=x.inj?` <span style="color:var(--cliff);font-size:9px">${x.inj}</span>`:"";
+  return`<div class="row ${cls}" data-n="${x.n.replace(/"/g,'&quot;')}">
+   <div class="tz" data-act="gone"><div class="pos ${x.p}">${x.p}</div>
+   <div class="nm">${x.n}<span class="mt">${x.t}·B${x.b}</span>${f?` <span title="${f}">🚩</span>`:""}${inj}</div>
+   ${odd}</div><button class="add" data-act="mine">+</button></div>`;
+}
+
+function render(){
+  const picks=myPicks(),pk=picks[S.pickIdx],next=picks[S.pickIdx+1]??null;
+  document.getElementById("fmt").textContent=
+    `12-TEAM · 3WR+2FLEX${S.tePrem?" · TE PREM":""} · SLOT ${S.slot}`;
+  document.getElementById("tetog").classList.toggle("on",S.tePrem);
+  document.getElementById("slots").innerHTML=Array.from({length:12},(_,i)=>
+    `<button class="slot${i+1===S.slot?" on":""}" data-s="${i+1}">${i+1}</button>`).join("");
+  document.getElementById("rail").innerHTML=picks.map((n,i)=>
+    `<div class="pk${i===S.pickIdx?" on":""}${i<S.mine.length?" done":""}" data-i="${i}">
+      <div class="r">R${i+1}</div><div class="n">${n}</div></div>`).join("");
+  document.getElementById("fbar").innerHTML=FILTS.map(([k,l])=>
+    `<button class="fc${filt===k?" on":""}" data-f="${k}">${l}</button>`).join("");
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===view));
+  const R=roster(),m=document.getElementById("main");
+
+  if(query){
+    const q=query.toLowerCase();
+    const hits=P.filter(x=>inFilt(x)&&x.n.toLowerCase().includes(q)).slice(0,25);
+    m.innerHTML=`<div class="hd"><h2>Search</h2><div class="sub">${hits.length} found</div></div>
+      <div class="note">Tap a name to cross off · <b>+</b> to add to your team</div>
+      ${hits.length?hits.map(x=>rowHTML(x,pk)).join(""):`<div class="empty">No match.</div>`}`;
+  } else if(view==="plan"){
+    const live=P.filter(x=>!isGone(x.n)&&inFilt(x)&&!x.u).map(x=>({x,a:avail(pk,x)}));
+    const now=live.filter(o=>o.a>=.12&&o.a<=.70).sort((a,b)=>adp(a.x)-adp(b.x)).slice(0,12);
+    const wait=live.filter(o=>o.a>.70&&o.a<.985).sort((a,b)=>adp(a.x)-adp(b.x)).slice(0,16);
+    m.innerHTML=`<div class="hd"><h2>Round ${S.pickIdx+1} · Pick ${pk}</h2>
+      <div class="sub">${LIVE.loaded?`on clock: ${LIVE.n} · ${Math.max(0,pk-LIVE.n)} away`:`next: ${next??"—"}`}</div></div>
+      ${runAlert()}${R.al.map(a=>`<div class="alert ${a[0]}"><span>${a[1]}</span>
+        <div><b>${a[2]}</b>${a[3]}</div></div>`).join("")}
+      <div class="verd">${["RB","WR","TE","QB"].map(p=>{const v=verdict(p,pk,next);
+        return`<div class="v"><div class="p">${p}</div>
+        <div class="w" style="color:${v.c}">${v.w}</div><div class="g">${v.g}</div></div>`}).join("")}</div>
+      ${(()=>{const d=demand(LIVE.n,pk);if(!d||!d.teams)return"";
+        const cell=(k,l)=>{const v=d.need[k],hot=v/d.teams>=.5;
+          return `<div class="v"><div class="p">${l}</div>
+          <div class="w" style="color:${hot?"var(--cliff)":"var(--dim)"}">${v}</div>
+          <div class="g">of ${d.teams}</div></div>`};
+        return `<div class="gl">Teams needing each position before pick ${pk}</div>
+        <div class="verd">${cell("RB","RB")}${cell("WR","WR")}${cell("TE","TE")}${cell("QB","QB")}</div>`})()}
+      <div class="note"><b>WAIT</b> = you'll get someone as good at ${next??"—"}.
+        <b>TAKE</b> = cliff. Numbers on the right are odds he's still there at ${pk}.</div>
+      ${now.length?`<div class="grp"><div class="gl hot">Won't last — decide now</div>
+        ${now.map(o=>rowHTML(o.x,pk)).join("")}</div>`:""}
+      ${wait.length?`<div class="grp"><div class="gl">Likely still here</div>
+        ${wait.map(o=>rowHTML(o.x,pk)).join("")}</div>`:
+        `<div class="empty">No ${filt==="ALL"?"players":filt+"s"} modelled at this pick${filt!=="ALL"?" — tap ALL or check the Board":" — use Board or search"}.</div>`}`;
+  } else if(view==="board"){
+    let h=`<div class="hd"><h2>Full board</h2><div class="sub">tap = gone · + = mine</div></div>`;
+    ["RB","WR","TE","QB","DEF","PK"].filter(z=>filt==="ALL"||z===filt).forEach(pos=>{
+      const ts=tiers(pos);if(!ts.length)return;
+      h+=`<div class="gl">${pos}</div>`;
+      ts.forEach((t,i)=>{
+        h+=`<div class="grp">${t.map(x=>rowHTML(x,null)).join("")}</div>`;
+        if(i<ts.length-1&&i<6)h+=`<div class="cb">▼ tier break</div>`;
+      });
+      const un=P.filter(x=>x.p===pos&&x.u).sort((a,b)=>(a.dc||99)-(b.dc||99));
+      if(un.length)h+=`<div class="gl">${pos} · unranked depth (${un.length})</div>
+        <div class="grp">${un.slice(0,40).map(x=>rowHTML(x,null)).join("")}</div>`;
+    });
+    m.innerHTML=h;
+  } else {
+    m.innerHTML=`<div class="hd"><h2>My team</h2><div class="sub">${S.mine.length} drafted</div></div>
+      ${R.al.map(a=>`<div class="alert ${a[0]}"><span>${a[1]}</span>
+        <div><b>${a[2]}</b>${a[3]}</div></div>`).join("")}
+      ${S.mine.length?`<div class="grp"><div class="gl">Draft log · reach vs ADP</div>
+      ${S.mine.map((n,i)=>{const x=byName[n];if(!x)return"";const at=picks[i]??"?";
+        const d=Math.round(adp(x)-at),c=d<-8?"var(--cliff)":d<0?"var(--odds)":"var(--safe)";
+        return`<div class="log"><span>R${i+1} · ${x.p} ${n}</span>
+        <span style="color:${c};font-weight:700">${d>0?"+"+d:d}</span></div>`}).join("")}</div>
+      <div class="note">Negative = you reached. Past <b>−8</b> is red. Screenshot this after the draft.</div>`
+      :`<div class="empty">Nothing yet. Hit <b>+</b> on a player.</div>`}
+      <div class="grp"><div class="gl">Sleeper sync</div><div class="note" id="syncmsg">Off. Tap SYNC up top to auto-track every pick.</div><input id="uname" value="${S.user}" placeholder="Sleeper username" style="width:100%;background:var(--ink2);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:13px;margin-bottom:6px"><button class="btn" id="detect" style="padding:8px 12px">Detect my slot</button><div class="note" id="detmsg">Finds your draft slot and draft ID automatically.</div></div><div class="grp"><div class="gl">Full player pool</div><button class="btn" id="loadpool" style="padding:8px 12px">${poolLoaded?"Reload pool":"Load full player list"}</button><div class="note" id="poolmsg">${poolLoaded?`${P.length} players loaded.`:"Adds every rostered NFL player so late rounds never run dry, and makes pick matching exact by player ID. ~5MB, once. Do this before the draft starts."}</div></div><div class="grp"><button class="btn" id="wipe" style="padding:8px 12px">Reset everything</button></div>`;
+  }
+
+  document.getElementById("rline").innerHTML=
+    [["QB",R.qb,1],["RB",R.rb,2],["WR",R.wr,3],["TE",R.te,1],["FLEX",R.flex,2]]
+    .map(([l,v,n])=>`<span class="chip ${v>=n?"ok":"need"}">${l} ${v}/${n}</span>`).join("")
+    +(R.need.length?`<span class="chip need">Need ${R.need.join(" ")}</span>`
+      :`<span class="chip ok">Starters full</span>`)
+    +`<span class="chip">${S.gone.length+S.mine.length} off · ${P.length} pool</span>`;
+  save();
+}
+
+document.getElementById("q").addEventListener("input",e=>{query=e.target.value.trim();render()});
+
+
+/* ---------- Sleeper live sync ---------- */
+let syncTimer=null;
+function smsg(t){const e=document.getElementById("syncmsg");if(e)e.innerHTML=t;
+  const b=document.getElementById("syncbtn");if(b)b.classList.toggle("on",!!syncTimer)}
+function matchPlayer(md,pid){
+  if(pid&&byId[pid])return byId[pid];
+  const full=`${md.first_name||""} ${md.last_name||""}`.trim();
+  return P.find(x=>x.n===full)
+      || P.find(x=>x.n.replace(/ (Jr\.|Sr\.|II|III)$/,"")===full)
+      || P.find(x=>x.n.split(" ").slice(-1)[0]===md.last_name&&x.p===md.position);
+}
+async function pollSync(){
+  try{
+    const r=await fetch(`https://api.sleeper.app/v1/draft/${S.draftId}/picks`);
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const picks=(await r.json()).sort((a,b)=>a.pick_no-b.pick_no);
+    LIVE.n=picks.length+1;LIVE.teams=buildTeams(picks);LIVE.loaded=true;
+    let added=0,unmatched=0;
+    picks.forEach(pk=>{
+      const m=matchPlayer(pk.metadata||{},pk.player_id);
+      if(!m){unmatched++;return}
+      const mine=pk.draft_slot===S.slot;
+      if(mine){if(!S.mine.includes(m.n)){S.gone=S.gone.filter(v=>v!==m.n);
+        S.mine.push(m.n);S.hist.push(m.n);added++}}
+      else if(!isGone(m.n)){S.gone.push(m.n);S.hist.push(m.n);added++}
+    });
+    if(S.mine.length)S.pickIdx=Math.min(15,S.mine.length);
+    smsg(`<span style="color:var(--safe)">LIVE</span> · pick ${LIVE.n} · slot ${slotOf(LIVE.n)} on the clock`
+      +(added?` · +${added} new`:"")+(unmatched?` · ${unmatched} unmatched`:""));
+    render();
+  }catch(e){
+    const cors=/Failed to fetch|NetworkError|Load failed/i.test(e.message);
+    smsg(`<span style="color:var(--cliff)">${e.message}</span><br>`
+      +(cors?"Browser blocked the request. Manual tapping still works — that's the fallback."
+            :"Check the draft ID.")); 
+    clearInterval(syncTimer);syncTimer=null;
+  }
+}
+
+
+/* Pull Sleeper's full player list (~5MB, once per session).
+   Ranked players keep their ADP and gain a player_id; everyone else
+   joins as unranked depth for the late rounds. */
+async function loadPool(){
+  const st=t=>{const e=document.getElementById("poolmsg");if(e)e.innerHTML=t};
+  if(poolLoaded){st("Already loaded.");return}
+  const btn=document.getElementById("loadpool");if(btn)btn.textContent="Loading…";
+  try{
+    st("Downloading ~5MB…");
+    const all=await fetch("https://api.sleeper.app/v1/players/nfl").then(r=>r.json());
+    const KEEP=new Set(["QB","RB","WR","TE","K","DEF"]);
+    let added=0,linked=0;
+    for(const id in all){
+      const a=all[id];if(!a||!KEEP.has(a.position))continue;
+      if(a.position!=="DEF"&&!a.team)continue;              /* free agents out */
+      if(a.position!=="DEF"&&a.status&&a.status!=="Active")continue;
+      const nm=a.position==="DEF"?`${a.team} Defense`
+        :`${a.first_name||""} ${a.last_name||""}`.trim();
+      const pos=a.position==="K"?"PK":a.position;
+      let ex=byName[nm]||P.find(x=>x.p===pos&&x.t===a.team&&
+        x.n.split(" ").slice(-1)[0]===a.last_name);
+      if(ex){ex.id=id;byId[id]=ex;linked++;continue}
+      const np={n:nm,p:pos,t:a.team||"FA",b:TEAMBYE[a.team]||0,a:null,s:null,id,
+        u:true,dc:a.depth_chart_order||null,inj:a.injury_status||null};
+      P.push(np);byName[nm]=np;byId[id]=np;added++;
+    }
+    poolLoaded=true;
+    st(`<span style="color:var(--safe)">Loaded</span> · ${linked} linked to ADP · `
+      +`${added} unranked added · ${P.length} total`);
+    if(btn)btn.textContent="Reload pool";
+    render();
+  }catch(e){
+    st(`<span style="color:var(--cliff)">${e.message}</span> — board still works without it.`);
+    if(btn)btn.textContent="Load full player list";
+  }
+}
+
+async function detectSlot(){
+  const st=t=>{const e=document.getElementById("detmsg");if(e)e.innerHTML=t};
+  const un=(document.getElementById("uname")?.value||S.user).trim();
+  if(!un){st("Enter your Sleeper username.");return}
+  try{
+    st("Looking up…");
+    const u=await fetch(`https://api.sleeper.app/v1/user/${encodeURIComponent(un)}`).then(r=>r.json());
+    if(!u||!u.user_id)throw new Error("username not found");
+    const ds=await fetch(`https://api.sleeper.app/v1/league/${S.leagueId}/drafts`).then(r=>r.json());
+    const d=ds.find(x=>x.status!=="complete")||ds[0];
+    if(!d)throw new Error("no draft on this league");
+    S.draftId=d.draft_id;S.user=un;
+    const sl=d.draft_order&&d.draft_order[u.user_id];
+    if(!sl)throw new Error("draft order not posted yet — set slot by hand");
+    S.slot=sl;render();
+    st(`<span style="color:var(--safe)">Slot ${sl}</span> · draft ${d.draft_id} · ${d.settings.rounds} rounds`);
+  }catch(e){st(`<span style="color:var(--cliff)">${e.message}</span>`)}
+}
+
+function toggleSync(){
+  if(syncTimer){clearInterval(syncTimer);syncTimer=null;smsg("Sync off.");return}
+  smsg("Connecting…");pollSync();syncTimer=setInterval(pollSync,10000);
+}
+
+document.addEventListener("click",e=>{
+  const s=e.target.closest(".slot"),p=e.target.closest(".pk"),
+        t=e.target.closest(".tab"),r=e.target.closest(".row");
+  const f=e.target.closest(".fc");
+  if(f){filt=f.dataset.f;render()}
+  else if(s){S.slot=+s.dataset.s;render()}
+  else if(p){S.pickIdx=+p.dataset.i;render()}
+  else if(t){view=t.dataset.v;query="";document.getElementById("q").value="";render()}
+  else if(e.target.id==="tetog"){S.tePrem=!S.tePrem;render()}
+  else if(e.target.id==="loadpool"){loadPool()}
+  else if(e.target.id==="detect"){detectSlot()}
+  else if(e.target.id==="syncbtn"){view="team";query="";document.getElementById("q").value="";render();toggleSync()}
+  else if(e.target.id==="undo"){const last=S.hist.pop();
+    if(last){S.gone=S.gone.filter(n=>n!==last);S.mine=S.mine.filter(n=>n!==last)}render()}
+  else if(e.target.id==="wipe"){
+    if(confirm("Clear all picks and start over?")){S={slot:S.slot,pickIdx:0,tePrem:S.tePrem,
+      gone:[],mine:[],hist:[]};render()}}
+  else if(r){
+    const n=r.dataset.n.replace(/&quot;/g,'"'),act=e.target.closest("[data-act]")?.dataset.act;
+    if(act==="mine"){
+      if(S.mine.includes(n)){S.mine=S.mine.filter(v=>v!==n)}
+      else{S.mine.push(n);S.gone=S.gone.filter(v=>v!==n);S.hist.push(n)}
+    }else{
+      if(S.mine.includes(n))S.mine=S.mine.filter(v=>v!==n);
+      else if(S.gone.includes(n))S.gone=S.gone.filter(v=>v!==n);
+      else{S.gone.push(n);S.hist.push(n)}
+    }
+    if(query){query="";document.getElementById("q").value=""}
+    render();
+  }
+});
+render();
+</script>
+</body>
+</html>
