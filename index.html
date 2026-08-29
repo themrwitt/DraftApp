@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Draft Board</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B1420'/%3E%3Ctext x='16' y='23' font-size='19' font-family='monospace' font-weight='bold' fill='%234CC2FF' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root{--ink:#0B1420;--ink2:#121E2E;--ink3:#182739;--line:#24374E;
 --chalk:#E9EEF4;--dim:#7F94AC;--odds:#F2B441;--safe:#3AD6A0;--cliff:#FF4D6D;
@@ -516,7 +519,7 @@ function render(){
         <span style="color:${c};font-weight:700">${d>0?"+"+d:d}</span></div>`}).join("")}</div>
       <div class="note">Negative = you reached. Past <b>−8</b> is red. Screenshot this after the draft.</div>`
       :`<div class="empty">Nothing yet. Hit <b>+</b> on a player.</div>`}
-      <div class="grp"><div class="gl">Sleeper sync</div><div class="note" id="syncmsg">${syncStatus}</div><input id="uname" value="${S.user}" placeholder="Sleeper username" style="width:100%;background:var(--ink2);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:13px;margin-bottom:6px"><button class="btn" id="detect" style="padding:8px 12px">Detect my slot</button><div class="note" id="detmsg">${detStatus}</div></div><div class="grp"><div class="gl">Full player pool</div><button class="btn" id="loadpool" style="padding:8px 12px">${poolLoaded?"Reload pool":"Load full player list"}</button><div class="note" id="poolmsg">${poolLoaded?`${P.length} players loaded.`:"Adds every rostered NFL player so late rounds never run dry, and makes pick matching exact by player ID. ~5MB, once. Do this before the draft starts."}</div></div><div class="grp"><button class="btn" id="wipe" style="padding:8px 12px">Reset everything</button></div>`;
+      <div class="grp"><div class="gl">Sleeper sync</div><div class="note" id="syncmsg">${syncStatus}</div><div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:6px">draft ${S.draftId} ${S.draftId===TEST_DRAFT?"· REHEARSAL":"· tonight"}</div><button class="btn" id="rehearse" style="padding:8px 12px;margin-right:5px">Rehearse on old draft</button><button class="btn" id="golive" style="padding:8px 12px">Back to tonight</button><input id="uname" value="${S.user||'TheMrWitt'}" placeholder="Sleeper username" style="width:100%;background:var(--ink2);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:13px;margin-bottom:6px"><button class="btn" id="detect" style="padding:8px 12px">Detect my slot</button><div class="note" id="detmsg">${detStatus}</div></div><div class="grp"><div class="gl">Full player pool</div><button class="btn" id="loadpool" style="padding:8px 12px">${poolLoaded?"Reload pool":"Load full player list"}</button><div class="note" id="poolmsg">${poolLoaded?`${P.length} players loaded.`:"Adds every rostered NFL player so late rounds never run dry, and makes pick matching exact by player ID. ~5MB, once. Do this before the draft starts."}</div></div><div class="grp"><button class="btn" id="wipe" style="padding:8px 12px">Reset everything</button></div>`;
   }
 
   document.getElementById("rline").innerHTML=
@@ -621,12 +624,23 @@ async function detectSlot(){
     const ds=await fetch(`https://api.sleeper.app/v1/league/${S.leagueId}/drafts`).then(r=>r.json());
     const d=ds.find(x=>x.status!=="complete")||ds[0];
     if(!d)throw new Error("no draft on this league");
-    S.draftId=d.draft_id;S.user=un;
+    S.user=un;if(S.draftId!==TEST_DRAFT)S.draftId=d.draft_id;
     const sl=d.draft_order&&d.draft_order[u.user_id];
     if(!sl)throw new Error("draft order not posted yet — set slot by hand");
     S.slot=sl;render();
     st(`<span style="color:var(--safe)">Slot ${sl}</span> · draft ${d.draft_id} · ${d.settings.rounds} rounds`);
   }catch(e){st(`<span style="color:var(--cliff)">${e.message}</span>`)}
+}
+
+
+const LIVE_DRAFT='1396393203128610816', TEST_DRAFT='1389450175096836097';
+function stopSync(){if(syncTimer){clearInterval(syncTimer);syncTimer=null}}
+function useDraft(id,label){
+  stopSync();
+  S.draftId=id;S.gone=[];S.mine=[];S.hist=[];S.pickIdx=0;
+  LIVE={n:0,teams:{},loaded:false};
+  syncTimer=setInterval(pollSync,10000);
+  smsg(label);render();pollSync();
 }
 
 function toggleSync(){
@@ -645,14 +659,16 @@ document.addEventListener("click",e=>{
   else if(p){S.pickIdx=+p.dataset.i;render()}
   else if(t){view=t.dataset.v;query="";document.getElementById("q").value="";render()}
   else if(e.target.id==="tetog"){S.tePrem=!S.tePrem;render()}
+  else if(e.target.id==="rehearse"){useDraft(TEST_DRAFT,"Rehearsal — loading 192 completed picks…")}
+  else if(e.target.id==="golive"){useDraft(LIVE_DRAFT,"Back on tonight's draft.")}
   else if(e.target.id==="loadpool"){loadPool()}
   else if(e.target.id==="detect"){detectSlot()}
   else if(e.target.id==="syncbtn"){view="team";query="";document.getElementById("q").value="";render();toggleSync()}
   else if(e.target.id==="undo"){const last=S.hist.pop();
     if(last){S.gone=S.gone.filter(n=>n!==last);S.mine=S.mine.filter(n=>n!==last)}render()}
   else if(e.target.id==="wipe"){
-    if(confirm("Clear all picks and start over?")){S={slot:S.slot,pickIdx:0,tePrem:S.tePrem,
-      gone:[],mine:[],hist:[]};render()}}
+    if(confirm("Clear all picks and start over?")){
+      S.gone=[];S.mine=[];S.hist=[];S.pickIdx=0;LIVE={n:0,teams:{},loaded:false};render()}}
   else if(r){
     const n=r.dataset.n.replace(/&quot;/g,'"'),act=e.target.closest("[data-act]")?.dataset.act;
     if(act==="mine"){
